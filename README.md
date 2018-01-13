@@ -302,7 +302,7 @@ Accuracy
 
 81% accurate. Next week I will see how logistic regression fares compared to Random Forest. My only conclusion at this point is that the margins package is fine for calculating margins, but not so good for graphing them. 
 
-This post can be found on [GitHub](www.github.com/brettory)
+This post can be found on [GitHub](https://github.com/brettory/Titanic_p1)
 
 <br>
 
