@@ -1,22 +1,14 @@
 ---
-title: "Predicting survival on the Titanic: Part 1/2"
-subtitle: "Exploring margins in R"
+title: "Predicting survival on the Titanic: Part 1/2 Exploring margins in R"
+# author: "Brett Ory"
+thumbnailImagePosition: left
+thumbnailImage: https://cdn.images.express.co.uk/img/dynamic/151/590x/secondary/titanic-3-775693.jpg
 coverImage: https://cdn.images.express.co.uk/img/dynamic/151/590x/secondary/titanic-3-775693.jpg
-date: "Jan 9, 2018"
-output:
-  html_document:
-    df_print: paged
 metaAlignment: center
 coverMeta: out
-tags:
-- kaggle
-- plot
-- A/B testing
-- model comparison
-- regression
-thumbnailImage: https://cdn.images.express.co.uk/img/dynamic/151/590x/secondary/titanic-3-775693.jpg
-thumbnailImagePosition: right
-categories: personal project
+date: 2018-01-09T21:13:14-05:00
+categories: ["Personal projects"]
+tags: ["kaggle", "plot", "margins", "logistic regression", "predict", "A/B testing"]
 ---
 
 
@@ -24,12 +16,12 @@ categories: personal project
 knitr::opts_chunk$set(echo = TRUE)
 library(plyr)
 library(dplyr)
-titanic <- read.csv("train.csv")
+train <- read.csv("train.csv")
 ```
 
-![](https://cdn.images.express.co.uk/img/dynamic/151/590x/secondary/titanic-3-775693.jpg)
 
-<br><br>
+
+<br>
 
 Yes, [this](http://rstudio-pubs-static.s3.amazonaws.com/24969_894d890964fd4308ab537bfde1f784d2.html) [is](https://rpubs.com/srirampsampath/45661) [yet](https://www.youtube.com/watch?v=AEeWmjSBTjE) [another](https://public.tableau.com/en-us/s/gallery/predicting-survival-titanic) [post](https://www.wolfram.com/mathematica/new-in-10/highly-automated-machine-learning/predict-the-survival-of-titanic-passengers.html) [about](https://prezi.com/3z1vocskmrkn/predicting-survival-on-the-titanic/) [using](http://adataanalyst.com/kaggle/4-different-ways-predict-survival-titanic-part-1/) [the](https://www.wits.ac.za/media/migration/files/cs-38933-fix/migrated-pdf/pdfs-2/Titanic.pdf) [open](https://github.com/topics/titanic-survival-prediction) [source](https://blogs.msdn.microsoft.com/cdndevs/2016/05/13/would-you-have-survived-the-titanic-try-this-step-by-step-machine-learning-experiment-to-find-out/) [Titanic](http://www.ritchieng.com/machine-learning-project-titanic-survival/) [dataset](http://anthony.boyles.cc/portfolio/PredictingSurvivalOnTheTitanic.html) [to](https://rapidminer.com/resource/rapidminer-advanced-analytics-demonstration/) [predict](http://krex.k-state.edu/dspace/bitstream/handle/2097/20541/MichaelWhitley2015.pdf;sequence=1) [whether](https://gallery.cortanaintelligence.com/Experiment/Machine-Learning-experiment-to-predict-survival-chances-of-Titanic-passengers-1) [someone](http://demos.datasciencedojo.com/demo/titanic/) [would](http://logicalgenetics.com/titanic-survivor-prediction/) [live](https://www.jmp.com/content/dam/jmp/documents/en/academic/case-study-library/case-study-library-12/analytics-cases/logistic-titanicpassengers.pdf) [or](https://www.rosaanalytics.com/project2/) [die](https://towardsdatascience.com/play-with-data-2a5db35b279c). 
 
@@ -47,12 +39,12 @@ The Titanic data is free to download from Kaggle, where they have split it into 
 ```{r data table, echo = FALSE, warning = FALSE}
 library(knitr)
 
-Varname <- names(titanic)
+Varname <- names(train)
 Description <- c("Passenger ID", "Survival (0 = No; 1 = Yes)", "Passenger Class (1 = 1st; 2 = 2nd; 3 = 3rd)", "Name", "Sex",
                  "Age", "Number of Siblings/Spouses Aboard", "Number of parents/children aboard", "Ticket number", 
                  "Passenger Fare (British pound)", "Cabin", "Port of Embarkation (C = Cherbourg; Q = Queenstown; S = Southampton)")
 table <- as.data.frame(cbind(Varname, Description))
-kable(table[1:12,], caption = "List of variables")
+kable(table[1:12,])
 ```
    
 <br><br>   
@@ -71,9 +63,10 @@ We eventually want to use the test dataset (test.csv) to check the accuracy of o
 ```{r merge test and train}
 test <- read.csv("test.csv")
 test$tID <- 1 # test data is marked with a 1
-test$Survived <- NA # Survived data is missing from test data
+test$Survived <- NA # test data is missing Survived
 train <- read.csv("train.csv")
 train$tID <- 0 # train data is marked with a 0
+test <- test[,c(1,13,2:12)] # put variable names in same order as in train
 titanic <- rbind(train, test)
 rm(train,test)
 ```
@@ -83,7 +76,7 @@ rm(train,test)
 ### Missing data
 First, not all missings are coded as NA, so we convert these to NA
 ```{r recode missings}
-  titanic[titanic == ""] <- NA
+titanic[titanic == ""] <- NA
 ```
 
 A quick glance at the data tells us that there are 263 missings for Age (20.09%), 1 missing for Fare (0.08%), 1014 missings for Cabin (77.46%), and 2 missing for Embarked (0.15%)
@@ -237,7 +230,7 @@ First of all, it appears James Cameron was on the right track with his "women an
 
 A useful function in Stata that is, since March, 2017, also available in R is the margins function. Its purpose is to calculate marginal predicted probabilities, and there are two ways to calculate these. First, there is the Average Marginal Effects (AME) which is the default in the margins package. As far as I understand them, AMEs can be interpreted as the change in the probability of survival per unit change in each variable averaged across all cases. Marginal Effects at the Means (MEM) on the other hand, can be interpreted as the probability of survival for an observed value of a variable (Ex: First class), while holding the other variables constant at their means or other meaningful value (Ex: Age = 29, fem = 1). The main thing to keep in mind is that AMEs should be interpreted as a change in probability while MEMs should be interpreted as absolute probability. I now do a demonstration with AMEs 
 
-```{r  margins, echo = TRUE , warning = FALSE, fig.height = 5, fig.width = 10, fig.align = "center"}
+```{r  margins, echo = TRUE , warning = FALSE, fig.align = "center"}
 library(margins)
 margins1 <- margins(model1)
 summary(margins1)
